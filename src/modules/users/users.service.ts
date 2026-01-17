@@ -36,6 +36,18 @@ export class UsersService {
     return { id: created._id.toString(), name: created.name, email: created.email };
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+    return this.userModel.findOne({
+      email: normalizedEmail,
+      deletedAt: null,
+    });
+  }
+
+  async comparePassword(password: string, passwordHash: string): Promise<boolean> {
+    return bcrypt.compare(password, passwordHash);
+  }
+
   private async hashPassword(password: string): Promise<string> {
     const rounds = Number(process.env.SALT_ROUNDS ?? 10);
     return bcrypt.hash(password, rounds);
