@@ -11,7 +11,7 @@ export class ReservationsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('id') userId: string,
     @Body() createReservationDTO: CreateReservationDTO,
   ): Promise<CreateReservationResponseDTO> {
     return this.reservationsService.create(userId, createReservationDTO);
