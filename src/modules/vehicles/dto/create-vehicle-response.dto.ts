@@ -1,11 +1,8 @@
 export class CreateVehicleResponseDTO {
   id: string;
-  brand: string;
-  vehicleModel: string;
-  seats: number;
+  name: string;
+  year: string;
   type: string;
   engine: string;
-  licensePlate: string;
-  year: number;
-  reserved: boolean;
+  size: string;
 }

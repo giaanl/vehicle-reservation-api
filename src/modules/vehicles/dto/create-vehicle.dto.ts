@@ -1,23 +1,18 @@
 import {
   IsNotEmpty,
   IsString,
-  IsNumber,
-  Min,
-  MaxLength,
+  Matches,
 } from 'class-validator';
 
 export class CreateVehicleDTO {
   @IsString()
   @IsNotEmpty()
-  brand: string;
+  name: string;
 
   @IsString()
   @IsNotEmpty()
-  vehicleModel: string;
-
-  @IsNumber()
-  @Min(1)
-  seats: number;
+  @Matches(/^\d{4}$/, { message: 'year deve ser um ano válido no formato YYYY' })
+  year: string;
 
   @IsString()
   @IsNotEmpty()
@@ -29,10 +24,6 @@ export class CreateVehicleDTO {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(10)
-  licensePlate: string;
-
-  @IsNumber()
-  @Min(1900)
-  year: number;
+  @Matches(/^\d+$/, { message: 'size deve ser um número válido' })
+  size: string;
 }

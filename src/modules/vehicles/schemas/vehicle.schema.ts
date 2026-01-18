@@ -4,13 +4,10 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class Vehicle extends Document {
   @Prop({ required: true })
-  brand: string;
+  name: string;
 
   @Prop({ required: true })
-  vehicleModel: string;
-
-  @Prop({ required: true, min: 1 })
-  seats: number;
+  year: string;
 
   @Prop({ required: true })
   type: string;
@@ -18,14 +15,8 @@ export class Vehicle extends Document {
   @Prop({ required: true })
   engine: string;
 
-  @Prop({ required: true, unique: true })
-  licensePlate: string;
-
   @Prop({ required: true })
-  year: number;
-
-  @Prop({ default: false })
-  reserved: boolean;
+  size: string;
 
   @Prop({ type: Date, default: null })
   deletedAt?: Date | null;
@@ -35,8 +26,3 @@ export class Vehicle extends Document {
 }
 
 export const VehicleSchema = SchemaFactory.createForClass(Vehicle);
-
-VehicleSchema.index(
-  { licensePlate: 1 },
-  { unique: true, partialFilterExpression: { deletedAt: null } },
-);

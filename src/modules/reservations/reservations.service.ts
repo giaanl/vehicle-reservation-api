@@ -22,9 +22,14 @@ export class ReservationsService {
   ): Promise<CreateReservationResponseDTO> {
     const { vehicleId, startDate, endDate } = createReservationDTO;
 
-    const vehicle = await this.vehiclesService.findById(vehicleId);
+    await this.vehiclesService.findById(vehicleId);
 
-    if (vehicle.reserved) {
+    const vehicleActiveReservation = await this.reservationModel.findOne({
+      vehicleId: new Types.ObjectId(vehicleId),
+      status: ReservationStatus.ACTIVE,
+    });
+
+    if (vehicleActiveReservation) {
       throw new ConflictException('Veículo já está reservado');
     }
 
@@ -47,8 +52,6 @@ export class ReservationsService {
 
     await created.save();
 
-    await this.vehiclesService.updateReservationStatus(vehicleId, true);
-
     return {
       id: created._id.toString(),
       userId: created.userId.toString(),
@@ -60,44 +63,39 @@ export class ReservationsService {
   }
 
   // ----- Função teste - valida se a reserva chegou na data final e finaliza ela
-  //   @Cron(CronExpression.EVERY_HOUR)
-  //   async completeExpiredReservations(): Promise<void> {
-  //     const now = new Date();
+  // @Cron(CronExpression.EVERY_HOUR)
+  // async completeExpiredReservations(): Promise<void> {
+  //   const now = new Date();
 
-  //     const expiredReservations = await this.reservationModel.find({
-  //       status: ReservationStatus.ACTIVE,
-  //       endDate: { $lte: now, $ne: null },
-  //     });
+  //   const expiredReservations = await this.reservationModel.find({
+  //     status: ReservationStatus.ACTIVE,
+  //     endDate: { $lte: now, $ne: null },
+  //   });
 
-  //     if (expiredReservations.length === 0) {
-  //       return;
-  //     }
-
-  //     this.logger.log(
-  //       `Foram encontradas ${expiredReservations.length} reservas expiradas para finalizar.`,
-  //     );
-
-  //     await Promise.all(
-  //       expiredReservations.map(async (reservation) => {
-  //         const updated = await this.reservationModel.findOneAndUpdate(
-  //           {
-  //             _id: reservation._id,
-  //             status: ReservationStatus.ACTIVE,
-  //           },
-  //           { status: ReservationStatus.COMPLETED },
-  //         );
-
-  //         if (!updated) return;
-
-  //         await this.vehiclesService.updateReservationStatus(
-  //           reservation.vehicleId.toString(),
-  //           false,
-  //         );
-
-  //         this.logger.log(
-  //           `Finalizada a reserva ${reservation._id} do veículo ${reservation.vehicleId}`,
-  //         );
-  //       }),
-  //     );
+  //   if (expiredReservations.length === 0) {
+  //     return;
   //   }
+
+  //   this.logger.log(
+  //     `Foram encontradas ${expiredReservations.length} reservas expiradas para finalizar.`,
+  //   );
+
+  //   await Promise.all(
+  //     expiredReservations.map(async (reservation) => {
+  //       const updated = await this.reservationModel.findOneAndUpdate(
+  //         {
+  //           _id: reservation._id,
+  //           status: ReservationStatus.ACTIVE,
+  //         },
+  //         { status: ReservationStatus.COMPLETED },
+  //       );
+
+  //       if (!updated) return;
+
+  //       this.logger.log(
+  //         `Finalizada a reserva ${reservation._id} do veículo ${reservation.vehicleId}`,
+  //       );
+  //     }),
+  //   );
+  // }
 }
