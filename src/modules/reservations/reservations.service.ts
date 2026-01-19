@@ -1,10 +1,21 @@
-import { Injectable, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 // import { Cron, CronExpression } from '@nestjs/schedule';
 import { Reservation, ReservationStatus } from './schemas/reservation.schema';
 import { CreateReservationDTO } from './dto/create-reservation.dto';
 import { CreateReservationResponseDTO } from './dto/create-reservation-response.dto';
+import { ListReservationsDTO } from './dto/list-reservations.dto';
+import {
+  ListReservationsResponseDTO,
+  ReservationItemDTO,
+} from './dto/list-reservations-response.dto';
+import { UpdateReservationDTO } from './dto/update-reservation.dto';
 import { VehiclesService } from '../vehicles/vehicles.service';
 
 @Injectable()
@@ -59,6 +70,156 @@ export class ReservationsService {
       status: created.status,
       startDate: created.startDate,
       endDate: created.endDate ?? null,
+    };
+  }
+
+  async findByUserId(
+    userId: string,
+    listReservationsDTO: ListReservationsDTO,
+  ): Promise<ListReservationsResponseDTO> {
+    const { status, page = 1, limit = 10 } = listReservationsDTO;
+
+    const filter: { userId: Types.ObjectId; status?: ReservationStatus } = {
+      userId: new Types.ObjectId(userId),
+    };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [reservations, total] = await Promise.all([
+      this.reservationModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.reservationModel.countDocuments(filter),
+    ]);
+
+    const data: ReservationItemDTO[] = reservations.map((reservation) => ({
+      id: reservation._id.toString(),
+      userId: reservation.userId.toString(),
+      vehicleId: reservation.vehicleId.toString(),
+      status: reservation.status,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate ?? null,
+      createdAt: reservation.createdAt,
+      updatedAt: reservation.updatedAt,
+    }));
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async update(
+    userId: string,
+    reservationId: string,
+    updateReservationDTO: UpdateReservationDTO,
+  ): Promise<ReservationItemDTO> {
+    const reservation = await this.reservationModel.findOne({
+      _id: new Types.ObjectId(reservationId),
+      userId: new Types.ObjectId(userId),
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva não encontrada');
+    }
+
+    if (reservation.status !== ReservationStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Apenas reservas ativas podem ser atualizadas',
+      );
+    }
+
+    if (updateReservationDTO.endDate) {
+      reservation.endDate = new Date(updateReservationDTO.endDate);
+    }
+
+    await reservation.save();
+
+    return {
+      id: reservation._id.toString(),
+      userId: reservation.userId.toString(),
+      vehicleId: reservation.vehicleId.toString(),
+      status: reservation.status,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate ?? null,
+      createdAt: reservation.createdAt,
+      updatedAt: reservation.updatedAt,
+    };
+  }
+
+  async cancel(userId: string, reservationId: string): Promise<ReservationItemDTO> {
+    const reservation = await this.reservationModel.findOne({
+      _id: new Types.ObjectId(reservationId),
+      userId: new Types.ObjectId(userId),
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva não encontrada');
+    }
+
+    if (reservation.status !== ReservationStatus.ACTIVE) {
+      throw new BadRequestException('Apenas reservas ativas podem ser canceladas');
+    }
+
+    const now = new Date();
+    if (reservation.startDate <= now) {
+      throw new BadRequestException(
+        'Não é possível cancelar uma reserva que já foi iniciada',
+      );
+    }
+
+    reservation.status = ReservationStatus.CANCELLED;
+    await reservation.save();
+
+    return {
+      id: reservation._id.toString(),
+      userId: reservation.userId.toString(),
+      vehicleId: reservation.vehicleId.toString(),
+      status: reservation.status,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate ?? null,
+      createdAt: reservation.createdAt,
+      updatedAt: reservation.updatedAt,
+    };
+  }
+
+  async complete(userId: string, reservationId: string): Promise<ReservationItemDTO> {
+    const reservation = await this.reservationModel.findOne({
+      _id: new Types.ObjectId(reservationId),
+      userId: new Types.ObjectId(userId),
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reserva não encontrada');
+    }
+
+    if (reservation.status !== ReservationStatus.ACTIVE) {
+      throw new BadRequestException('Apenas reservas ativas podem ser finalizadas');
+    }
+
+    reservation.status = ReservationStatus.COMPLETED;
+    reservation.endDate = new Date();
+    await reservation.save();
+
+    return {
+      id: reservation._id.toString(),
+      userId: reservation.userId.toString(),
+      vehicleId: reservation.vehicleId.toString(),
+      status: reservation.status,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      createdAt: reservation.createdAt,
+      updatedAt: reservation.updatedAt,
     };
   }
 

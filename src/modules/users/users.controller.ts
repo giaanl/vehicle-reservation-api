@@ -10,22 +10,23 @@ import {
 import { UsersService } from './users.service';
 import { UpdateUserDTO } from './dto/update-user.dto';
 import { UpdateUserResponseDTO } from './dto/update-user-response.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Patch(':id')
+  @Patch()
   async update(
-    @Param('id') id: string,
+    @CurrentUser('id') id: string,
     @Body() updateUserDTO: UpdateUserDTO,
   ): Promise<UpdateUserResponseDTO> {
     return this.usersService.update(id, updateUserDTO);
   }
 
-  @Delete(':id')
+  @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string): Promise<void> {
+  async delete(@CurrentUser('id') id: string): Promise<void> {
     return this.usersService.softDelete(id);
   }
 }

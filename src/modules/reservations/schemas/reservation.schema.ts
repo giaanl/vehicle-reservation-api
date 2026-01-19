@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export enum ReservationStatus {
+  PENDING = 'PENDING',
   ACTIVE = 'ACTIVE',
   CANCELLED = 'CANCELLED',
   COMPLETED = 'COMPLETED',
