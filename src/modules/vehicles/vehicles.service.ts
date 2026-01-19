@@ -2,11 +2,19 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Vehicle } from './schemas/vehicle.schema';
-import { Reservation, ReservationStatus } from '../reservations/schemas/reservation.schema';
+import {
+  Reservation,
+  ReservationStatus,
+} from '../reservations/schemas/reservation.schema';
 import { CreateVehicleDTO } from './dto/create-vehicle.dto';
 import { CreateVehicleResponseDTO } from './dto/create-vehicle-response.dto';
 import { ListVehiclesDTO } from './dto/list-vehicles.dto';
-import { ListVehiclesResponseDTO, VehicleItemDTO } from './dto/list-vehicles-response.dto';
+import {
+  ListVehiclesResponseDTO,
+  VehicleItemDTO,
+} from './dto/list-vehicles-response.dto';
+import { UpdateVehicleDTO } from './dto/update-vehicle.dto';
+import { UpdateVehicleResponseDTO } from './dto/update-vehicle-response.dto';
 
 @Injectable()
 export class VehiclesService {
@@ -15,7 +23,9 @@ export class VehiclesService {
     @InjectModel(Reservation.name) private reservationModel: Model<Reservation>,
   ) {}
 
-  async create(createVehicleDTO: CreateVehicleDTO): Promise<CreateVehicleResponseDTO> {
+  async create(
+    createVehicleDTO: CreateVehicleDTO,
+  ): Promise<CreateVehicleResponseDTO> {
     const created = new this.vehicleModel({
       ...createVehicleDTO,
     });
@@ -97,5 +107,35 @@ export class VehiclesService {
         (available !== undefined ? data.length : total) / limit,
       ),
     };
+  }
+
+  async update(
+    id: string,
+    updateData: UpdateVehicleDTO,
+  ): Promise<UpdateVehicleResponseDTO> {
+    const vehicle = await this.findById(id);
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined),
+    );
+
+    Object.assign(vehicle, filteredData);
+
+    await vehicle.save();
+
+    return {
+      id: vehicle._id.toString(),
+      name: vehicle.name,
+      year: vehicle.year,
+      type: vehicle.type,
+      engine: vehicle.engine,
+      size: vehicle.size,
+    };
+  }
+
+  async delete(id: string): Promise<void> {
+    const vehicle = await this.findById(id);
+
+    vehicle.deletedAt = new Date();
+    await vehicle.save();
   }
 }
