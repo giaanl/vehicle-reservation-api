@@ -2,13 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Vehicle } from './schemas/vehicle.schema';
+import { Reservation, ReservationStatus } from '../reservations/schemas/reservation.schema';
 import { CreateVehicleDTO } from './dto/create-vehicle.dto';
 import { CreateVehicleResponseDTO } from './dto/create-vehicle-response.dto';
+import { ListVehiclesDTO } from './dto/list-vehicles.dto';
+import { ListVehiclesResponseDTO, VehicleItemDTO } from './dto/list-vehicles-response.dto';
 
 @Injectable()
 export class VehiclesService {
   constructor(
     @InjectModel(Vehicle.name) private vehicleModel: Model<Vehicle>,
+    @InjectModel(Reservation.name) private reservationModel: Model<Reservation>,
   ) {}
 
   async create(createVehicleDTO: CreateVehicleDTO): Promise<CreateVehicleResponseDTO> {
@@ -43,5 +47,55 @@ export class VehiclesService {
     }
 
     return vehicle;
+  }
+
+  async findAll(listDTO: ListVehiclesDTO): Promise<ListVehiclesResponseDTO> {
+    const { available, page = 1, limit = 10 } = listDTO;
+    const skip = (page - 1) * limit;
+
+    const filter = { deletedAt: null };
+
+    const [vehicles, total] = await Promise.all([
+      this.vehicleModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.vehicleModel.countDocuments(filter),
+    ]);
+
+    const activeReservations = await this.reservationModel.find({
+      vehicleId: { $in: vehicles.map((v) => v._id) },
+      status: ReservationStatus.ACTIVE,
+    });
+
+    const reservedVehicleIds = new Set(
+      activeReservations.map((r) => r.vehicleId.toString()),
+    );
+
+    let data: VehicleItemDTO[] = vehicles.map((vehicle) => ({
+      id: vehicle._id.toString(),
+      name: vehicle.name,
+      year: vehicle.year,
+      type: vehicle.type,
+      engine: vehicle.engine,
+      size: vehicle.size,
+      available: !reservedVehicleIds.has(vehicle._id.toString()),
+    }));
+
+    if (available !== undefined) {
+      data = data.filter((v) => v.available === available);
+    }
+
+    return {
+      data,
+      total: available !== undefined ? data.length : total,
+      page,
+      limit,
+      totalPages: Math.ceil(
+        (available !== undefined ? data.length : total) / limit,
+      ),
+    };
   }
 }
