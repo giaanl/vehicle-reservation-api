@@ -59,6 +59,16 @@ export class VehiclesService {
     return vehicle;
   }
 
+  async findByIdIncludingDeleted(id: string): Promise<Vehicle | null> {
+    if (!Types.ObjectId.isValid(id)) {
+      return null;
+    }
+
+    return this.vehicleModel.findOne({
+      _id: new Types.ObjectId(id),
+    });
+  }
+
   async findAll(listDTO: ListVehiclesDTO): Promise<ListVehiclesResponseDTO> {
     const { available, page = 1, limit = 10 } = listDTO;
     const skip = (page - 1) * limit;

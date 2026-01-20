@@ -84,7 +84,9 @@ export class ReservationsService {
     });
 
     if (userReservation) {
-      throw new ConflictException('Usuário já possui uma reserva ativa ou pendente');
+      throw new ConflictException(
+        'Usuário já possui uma reserva ativa ou pendente',
+      );
     }
 
     const created = new this.reservationModel({
@@ -135,7 +137,7 @@ export class ReservationsService {
 
     const data: ReservationItemDTO[] = await Promise.all(
       reservations.map(async (reservation) => {
-        const vehicle = await this.vehiclesService.findById(
+        const vehicle = await this.vehiclesService.findByIdIncludingDeleted(
           reservation.vehicleId.toString(),
         );
 
@@ -143,13 +145,15 @@ export class ReservationsService {
           id: reservation._id.toString(),
           userId: reservation.userId.toString(),
           vehicleId: reservation.vehicleId.toString(),
-          vehicle: {
-            name: vehicle.name,
-            year: vehicle.year,
-            type: vehicle.type,
-            engine: vehicle.engine,
-            size: vehicle.size,
-          },
+          vehicle: vehicle
+            ? {
+                name: vehicle.name,
+                year: vehicle.year,
+                type: vehicle.type,
+                engine: vehicle.engine,
+                size: vehicle.size,
+              }
+            : undefined,
           status: reservation.status,
           startDate: reservation.startDate,
           endDate: reservation.endDate ?? null,
