@@ -107,7 +107,6 @@ npm run start:prod
 **6. Acesse a aplicação:**
 
 - API: http://localhost:3000
-- Documentação Swagger: http://localhost:3000/api
 
 ---
 
