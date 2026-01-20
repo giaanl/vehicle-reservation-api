@@ -14,7 +14,6 @@ import { CreateReservationDTO } from './dto/create-reservation.dto';
 import { CreateReservationResponseDTO } from './dto/create-reservation-response.dto';
 import { ListReservationsDTO } from './dto/list-reservations.dto';
 import { ListReservationsResponseDTO, ReservationItemDTO } from './dto/list-reservations-response.dto';
-import { UpdateReservationDTO } from './dto/update-reservation.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('reservations')
@@ -37,16 +36,6 @@ export class ReservationsController {
     @Query() listReservationsDTO: ListReservationsDTO,
   ): Promise<ListReservationsResponseDTO> {
     return this.reservationsService.findByUserId(userId, listReservationsDTO);
-  }
-
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  async update(
-    @CurrentUser('id') userId: string,
-    @Param('id') reservationId: string,
-    @Body() updateReservationDTO: UpdateReservationDTO,
-  ): Promise<ReservationItemDTO> {
-    return this.reservationsService.update(userId, reservationId, updateReservationDTO);
   }
 
   @Patch(':id/cancel')

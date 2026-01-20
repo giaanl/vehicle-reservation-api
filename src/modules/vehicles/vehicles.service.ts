@@ -77,7 +77,9 @@ export class VehiclesService {
 
     const activeReservations = await this.reservationModel.find({
       vehicleId: { $in: vehicles.map((v) => v._id) },
-      status: ReservationStatus.ACTIVE,
+      status: {
+        $in: [ReservationStatus.ACTIVE, ReservationStatus.PENDING],
+      },
     });
 
     const reservedVehicleIds = new Set(
