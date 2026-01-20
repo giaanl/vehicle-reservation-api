@@ -1,4 +1,23 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vehicle-reservation-api
+    ports:
+      - '3000:3000'
+    environment:
+      MONGODB_URI: mongodb://root:root@mongo:27017/vehicle-reservation?authSource=admin
+      PORT: 3000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:4200
+      SALT_ROUNDS: 10
+      JWT_SECRET: TOKEN-JWT-SECRET
+      JWT_EXPIRATION: 86400
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
   mongo:
     image: mongo:latest
     container_name: mongodb
