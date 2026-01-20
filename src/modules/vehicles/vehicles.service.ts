@@ -13,6 +13,8 @@ import {
   ListVehiclesResponseDTO,
   VehicleItemDTO,
 } from './dto/list-vehicles-response.dto';
+import { UpdateVehicleDTO } from './dto/update-vehicle.dto';
+import { UpdateVehicleResponseDTO } from './dto/update-vehicle-response.dto';
 
 @Injectable()
 export class VehiclesService {
@@ -107,5 +109,50 @@ export class VehiclesService {
         (available !== undefined ? data.length : total) / limit,
       ),
     };
+  }
+
+  async update(
+    id: string,
+    updateData: UpdateVehicleDTO,
+  ): Promise<UpdateVehicleResponseDTO> {
+    const vehicle = await this.findById(id);
+
+    if (updateData.name !== undefined) {
+      vehicle.name = updateData.name;
+    }
+
+    if (updateData.year !== undefined) {
+      vehicle.year = updateData.year;
+    }
+
+    if (updateData.type !== undefined) {
+      vehicle.type = updateData.type;
+    }
+
+    if (updateData.engine !== undefined) {
+      vehicle.engine = updateData.engine;
+    }
+
+    if (updateData.size !== undefined) {
+      vehicle.size = updateData.size;
+    }
+
+    await vehicle.save();
+
+    return {
+      id: vehicle._id.toString(),
+      name: vehicle.name,
+      year: vehicle.year,
+      type: vehicle.type,
+      engine: vehicle.engine,
+      size: vehicle.size,
+    };
+  }
+
+  async delete(id: string): Promise<void> {
+    const vehicle = await this.findById(id);
+
+    vehicle.deletedAt = new Date();
+    await vehicle.save();
   }
 }
