@@ -116,26 +116,11 @@ export class VehiclesService {
     updateData: UpdateVehicleDTO,
   ): Promise<UpdateVehicleResponseDTO> {
     const vehicle = await this.findById(id);
+    const filteredData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined),
+    );
 
-    if (updateData.name !== undefined) {
-      vehicle.name = updateData.name;
-    }
-
-    if (updateData.year !== undefined) {
-      vehicle.year = updateData.year;
-    }
-
-    if (updateData.type !== undefined) {
-      vehicle.type = updateData.type;
-    }
-
-    if (updateData.engine !== undefined) {
-      vehicle.engine = updateData.engine;
-    }
-
-    if (updateData.size !== undefined) {
-      vehicle.size = updateData.size;
-    }
+    Object.assign(vehicle, filteredData);
 
     await vehicle.save();
 

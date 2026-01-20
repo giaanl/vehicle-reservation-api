@@ -78,7 +78,7 @@ export class UsersService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    if (updateData.email) {
+    if (updateData.email !== undefined) {
       const normalizedEmail = updateData.email.trim().toLowerCase();
 
       const existingUser = await this.userModel.findOne({
@@ -94,11 +94,11 @@ export class UsersService {
       user.email = normalizedEmail;
     }
 
-    if (updateData.name) {
+    if (updateData.name !== undefined) {
       user.name = updateData.name.trim();
     }
 
-    if (updateData.password) {
+    if (updateData.password !== undefined) {
       user.passwordHash = await this.hashPassword(updateData.password);
     }
 

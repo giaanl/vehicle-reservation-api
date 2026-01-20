@@ -7,7 +7,9 @@ export class UpdateVehicleDTO {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\d{4}$/, { message: 'year deve ser um ano válido no formato YYYY' })
+  @Matches(/^\d{4}$/, {
+    message: 'year deve ser um ano válido no formato YYYY',
+  })
   year?: string;
 
   @IsString()
