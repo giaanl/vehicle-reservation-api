@@ -102,6 +102,10 @@ npm run start:dev
 # Modo produção
 npm run build
 npm run start:prod
+
+# Teste e2e
+npm run test:e2e
+
 ```
 
 **6. Acesse a aplicação:**
@@ -133,6 +137,9 @@ npm run start:dev      # Inicia com hot-reload
 # Produção
 npm run build          # Compila o projeto
 npm run start:prod     # Inicia em modo produção
+
+# Teste e2e
+npm run test:e2e
 ```
 
 ---
