@@ -2,11 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Vehicle } from './schemas/vehicle.schema';
-import { Reservation, ReservationStatus } from '../reservations/schemas/reservation.schema';
+import {
+  Reservation,
+  ReservationStatus,
+} from '../reservations/schemas/reservation.schema';
 import { CreateVehicleDTO } from './dto/create-vehicle.dto';
 import { CreateVehicleResponseDTO } from './dto/create-vehicle-response.dto';
 import { ListVehiclesDTO } from './dto/list-vehicles.dto';
-import { ListVehiclesResponseDTO, VehicleItemDTO } from './dto/list-vehicles-response.dto';
+import {
+  ListVehiclesResponseDTO,
+  VehicleItemDTO,
+} from './dto/list-vehicles-response.dto';
 
 @Injectable()
 export class VehiclesService {
@@ -15,7 +21,9 @@ export class VehiclesService {
     @InjectModel(Reservation.name) private reservationModel: Model<Reservation>,
   ) {}
 
-  async create(createVehicleDTO: CreateVehicleDTO): Promise<CreateVehicleResponseDTO> {
+  async create(
+    createVehicleDTO: CreateVehicleDTO,
+  ): Promise<CreateVehicleResponseDTO> {
     const created = new this.vehicleModel({
       ...createVehicleDTO,
     });
@@ -67,7 +75,9 @@ export class VehiclesService {
 
     const activeReservations = await this.reservationModel.find({
       vehicleId: { $in: vehicles.map((v) => v._id) },
-      status: ReservationStatus.ACTIVE,
+      status: {
+        $in: [ReservationStatus.ACTIVE, ReservationStatus.PENDING],
+      },
     });
 
     const reservedVehicleIds = new Set(

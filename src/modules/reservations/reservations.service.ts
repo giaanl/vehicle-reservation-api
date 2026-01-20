@@ -20,8 +20,6 @@ import { VehiclesService } from '../vehicles/vehicles.service';
 
 @Injectable()
 export class ReservationsService {
-  //   private readonly logger = new Logger(ReservationsService.name);
-
   constructor(
     @InjectModel(Reservation.name) private reservationModel: Model<Reservation>,
     private readonly vehiclesService: VehiclesService,
@@ -32,6 +30,40 @@ export class ReservationsService {
     createReservationDTO: CreateReservationDTO,
   ): Promise<CreateReservationResponseDTO> {
     const { vehicleId, startDate, endDate } = createReservationDTO;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDateObj = new Date(startDate);
+    startDateObj.setHours(0, 0, 0, 0);
+
+    if (startDateObj < today) {
+      throw new BadRequestException(
+        'A data de início não pode ser anterior ao dia atual',
+      );
+    }
+
+    if (endDate) {
+      const endDateObj = new Date(endDate);
+      endDateObj.setHours(0, 0, 0, 0);
+
+      if (endDateObj < startDateObj) {
+        throw new BadRequestException(
+          'A data de término não pode ser anterior à data de início',
+        );
+      }
+
+      if (endDateObj.getTime() === startDateObj.getTime()) {
+        throw new BadRequestException(
+          'A data de término não pode ser igual à data de início',
+        );
+      }
+    }
+
+    const status =
+      startDateObj.getTime() === today.getTime()
+        ? ReservationStatus.ACTIVE
+        : ReservationStatus.PENDING;
 
     await this.vehiclesService.findById(vehicleId);
 
@@ -44,19 +76,21 @@ export class ReservationsService {
       throw new ConflictException('Veículo já está reservado');
     }
 
-    const userActiveReservation = await this.reservationModel.findOne({
+    const userReservation = await this.reservationModel.findOne({
       userId: new Types.ObjectId(userId),
-      status: ReservationStatus.ACTIVE,
+      status: {
+        $in: [ReservationStatus.ACTIVE, ReservationStatus.PENDING],
+      },
     });
 
-    if (userActiveReservation) {
-      throw new ConflictException('Usuário já possui uma reserva ativa');
+    if (userReservation) {
+      throw new ConflictException('Usuário já possui uma reserva ativa ou pendente');
     }
 
     const created = new this.reservationModel({
       userId: new Types.ObjectId(userId),
       vehicleId: new Types.ObjectId(vehicleId),
-      status: ReservationStatus.ACTIVE,
+      status,
       startDate: new Date(startDate),
       endDate: endDate ? new Date(endDate) : null,
     });
@@ -99,16 +133,31 @@ export class ReservationsService {
       this.reservationModel.countDocuments(filter),
     ]);
 
-    const data: ReservationItemDTO[] = reservations.map((reservation) => ({
-      id: reservation._id.toString(),
-      userId: reservation.userId.toString(),
-      vehicleId: reservation.vehicleId.toString(),
-      status: reservation.status,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate ?? null,
-      createdAt: reservation.createdAt,
-      updatedAt: reservation.updatedAt,
-    }));
+    const data: ReservationItemDTO[] = await Promise.all(
+      reservations.map(async (reservation) => {
+        const vehicle = await this.vehiclesService.findById(
+          reservation.vehicleId.toString(),
+        );
+
+        return {
+          id: reservation._id.toString(),
+          userId: reservation.userId.toString(),
+          vehicleId: reservation.vehicleId.toString(),
+          vehicle: {
+            name: vehicle.name,
+            year: vehicle.year,
+            type: vehicle.type,
+            engine: vehicle.engine,
+            size: vehicle.size,
+          },
+          status: reservation.status,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate ?? null,
+          createdAt: reservation.createdAt,
+          updatedAt: reservation.updatedAt,
+        };
+      }),
+    );
 
     return {
       data,
@@ -157,7 +206,10 @@ export class ReservationsService {
     };
   }
 
-  async cancel(userId: string, reservationId: string): Promise<ReservationItemDTO> {
+  async cancel(
+    userId: string,
+    reservationId: string,
+  ): Promise<ReservationItemDTO> {
     const reservation = await this.reservationModel.findOne({
       _id: new Types.ObjectId(reservationId),
       userId: new Types.ObjectId(userId),
@@ -167,8 +219,10 @@ export class ReservationsService {
       throw new NotFoundException('Reserva não encontrada');
     }
 
-    if (reservation.status !== ReservationStatus.ACTIVE) {
-      throw new BadRequestException('Apenas reservas ativas podem ser canceladas');
+    if (reservation.status !== ReservationStatus.PENDING) {
+      throw new BadRequestException(
+        'Apenas reservas ativas podem ser canceladas',
+      );
     }
 
     const now = new Date();
@@ -179,6 +233,7 @@ export class ReservationsService {
     }
 
     reservation.status = ReservationStatus.CANCELLED;
+    reservation.endDate = new Date();
     await reservation.save();
 
     return {
@@ -193,7 +248,10 @@ export class ReservationsService {
     };
   }
 
-  async complete(userId: string, reservationId: string): Promise<ReservationItemDTO> {
+  async complete(
+    userId: string,
+    reservationId: string,
+  ): Promise<ReservationItemDTO> {
     const reservation = await this.reservationModel.findOne({
       _id: new Types.ObjectId(reservationId),
       userId: new Types.ObjectId(userId),
@@ -204,7 +262,9 @@ export class ReservationsService {
     }
 
     if (reservation.status !== ReservationStatus.ACTIVE) {
-      throw new BadRequestException('Apenas reservas ativas podem ser finalizadas');
+      throw new BadRequestException(
+        'Apenas reservas ativas podem ser finalizadas',
+      );
     }
 
     reservation.status = ReservationStatus.COMPLETED;
@@ -223,7 +283,37 @@ export class ReservationsService {
     };
   }
 
-  // ----- Função teste - valida se a reserva chegou na data final e finaliza ela
+  // // ----- Função teste - valida se a reserva chegou na data de inicio e ativa ela
+  // @Cron(CronExpression.EVERY_HOUR)
+  // async activatePendingReservations(): Promise<void> {
+  //   const now = new Date();
+  //   now.setHours(0, 0, 0, 0);
+
+  //   const pendingReservations = await this.reservationModel.find({
+  //     status: ReservationStatus.PENDING,
+  //     startDate: { $lte: now },
+  //   });
+
+  //   if (pendingReservations.length === 0) {
+  //     return;
+  //   }
+
+  //   await Promise.all(
+  //     pendingReservations.map(async (reservation) => {
+  //       const updated = await this.reservationModel.findOneAndUpdate(
+  //         {
+  //           _id: reservation._id,
+  //           status: ReservationStatus.PENDING,
+  //         },
+  //         { status: ReservationStatus.ACTIVE },
+  //       );
+
+  //       if (!updated) return;
+  //     }),
+  //   );
+  // }
+
+  // // ----- Função teste - valida se a reserva chegou na data final e finaliza ela
   // @Cron(CronExpression.EVERY_HOUR)
   // async completeExpiredReservations(): Promise<void> {
   //   const now = new Date();
@@ -237,10 +327,6 @@ export class ReservationsService {
   //     return;
   //   }
 
-  //   this.logger.log(
-  //     `Foram encontradas ${expiredReservations.length} reservas expiradas para finalizar.`,
-  //   );
-
   //   await Promise.all(
   //     expiredReservations.map(async (reservation) => {
   //       const updated = await this.reservationModel.findOneAndUpdate(
@@ -252,10 +338,6 @@ export class ReservationsService {
   //       );
 
   //       if (!updated) return;
-
-  //       this.logger.log(
-  //         `Finalizada a reserva ${reservation._id} do veículo ${reservation.vehicleId}`,
-  //       );
   //     }),
   //   );
   // }

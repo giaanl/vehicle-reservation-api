@@ -1,9 +1,18 @@
 import { ReservationStatus } from '../schemas/reservation.schema';
 
+export class VehicleInfoDTO {
+  name: string;
+  year: string;
+  type: string;
+  engine: string;
+  size: string;
+}
+
 export class ReservationItemDTO {
   id: string;
   userId: string;
   vehicleId: string;
+  vehicle?: VehicleInfoDTO;
   status: ReservationStatus;
   startDate: Date;
   endDate: Date | null;
